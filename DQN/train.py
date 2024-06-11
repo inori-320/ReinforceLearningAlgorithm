@@ -23,7 +23,7 @@ torch.manual_seed(0)
 epsilon_decay = 10000   # epsilon从1下降到0.01所需的步长
 epsilon_start = 1.0
 epsilon_end = 0.01
-device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")   # 定义设备
+#device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")   # 定义设备
 
 state_dim = env.observation_space.shape[0]  # 环境一开始的状态维度
 hidden_dim = 128    # 隐藏层维度

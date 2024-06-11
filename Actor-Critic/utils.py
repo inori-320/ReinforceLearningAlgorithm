@@ -8,7 +8,7 @@ class PolicyNet(nn.Module):
             nn.Linear(state_dim, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, action_dim),
-            nn.Softmax(dim=1)
+            nn.Softmax(dim=-1)
         )
 
     def forward(self, x):

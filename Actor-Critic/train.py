@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 
 actor_learning_rate = 1e-3
 critic_learning_rate = 1e-2
-n_episode = 1000
+n_episode = 3000
 step = 1000
-hidden_dim = 128
-gamma = 0.98
+hidden_dim = 256
+gamma = 0.99
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 env = gym.make("CartPole-v1")
@@ -45,7 +45,7 @@ for episode_i in range(n_episode):
             break
         agent.update(transition_dict)
     reward_mean_buffer.append(np.mean(reward_buffer[-100:]))
-    print(f"Episode: {episode_i}, avg.Reward: {np.mean(reward_buffer[-100:])}")
+    print(f"Episode: {episode_i}, avg.Reward: {np.mean(reward_buffer[-100:])}, Reward: {episode_reward}")
 
 # 画出奖励轨迹
 episodes_list = list(range(len(reward_buffer)))

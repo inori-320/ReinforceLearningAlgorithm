@@ -10,8 +10,8 @@ class ActorCritic:
     def __init__(self, state_dim, hidden_dim, action_dim, actor_learning_rate, critic_learning_rate, gamma):
         self.actor = utils.PolicyNet(state_dim, hidden_dim, action_dim).to(device)
         self.critic = utils.ValueNet(state_dim, hidden_dim).to(device)
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), actor_learning_rate)
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), critic_learning_rate)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_learning_rate)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_learning_rate)
         self.gamma = gamma
 
     def take_action(self, state):
