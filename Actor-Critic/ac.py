@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn.functional as F
 import utils
@@ -26,14 +27,13 @@ class ActorCritic:
         rewards = torch.tensor(transition_dict["rewards"], dtype=torch.float32).view(-1, 1).to(device)
         next_states = torch.tensor(transition_dict["next_states"], dtype=torch.float32).to(device)
         dones = torch.tensor(transition_dict["dones"], dtype=torch.float32).view(-1, 1).to(device)
-        # TODO
+
         td_target = rewards + self.gamma * self.critic(next_states) * (1 - dones)
-        td_delta = td_target - self.critic(states)
-
+        td_delta = td_target - self.critic(states)  # 计算TD误差，目标值（新）与当前critic网络（旧）的差距
         log_probs = torch.log(self.actor(states).gather(1, actions))
-        actor_loss = torch.mean(-log_probs * td_delta.detach())
-
+        actor_loss = torch.mean(-log_probs * td_delta.detach())     # .detach()表示将loss从计算图中分离出来，防止影响Critic参数
         critic_loss = torch.mean(F.mse_loss(self.critic(states), td_target.detach()))
+
         self.actor_optimizer.zero_grad()
         self.critic_optimizer.zero_grad()
         actor_loss.backward()
