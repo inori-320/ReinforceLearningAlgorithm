@@ -16,9 +16,9 @@ class ActorCritic:
 
     def take_action(self, state):
         state = torch.tensor([state], dtype=torch.float32).to(device)
-        probs = self.actor(state)
-        action_dist = torch.distributions.Categorical(probs)
-        action = action_dist.sample().item()
+        probs = self.actor(state)   # actor输出的是选择每个动作的概率
+        action_dist = torch.distributions.Categorical(probs)    # 创建以probs为标准类型的数据分布
+        action = action_dist.sample().item()    # 随机选择一个动作 tensor-->int
         return action
 
     def update(self, transition_dict):
@@ -28,10 +28,10 @@ class ActorCritic:
         next_states = torch.tensor(transition_dict["next_states"], dtype=torch.float32).to(device)
         dones = torch.tensor(transition_dict["dones"], dtype=torch.float32).view(-1, 1).to(device)
 
-        td_target = rewards + self.gamma * self.critic(next_states) * (1 - dones)
+        td_target = rewards + self.gamma * self.critic(next_states) * (1 - dones)   # 目标的当前时刻的state_value
         td_delta = td_target - self.critic(states)  # 计算TD误差，目标值（新）与当前critic网络（旧）的差距
         log_probs = torch.log(self.actor(states).gather(1, actions))
-        actor_loss = torch.mean(-log_probs * td_delta.detach())     # .detach()表示将loss从计算图中分离出来，防止影响Critic参数
+        actor_loss = torch.mean(-log_probs * td_delta.detach())     # 计算策略梯度损失，detach()表示将loss从计算图中分离出来，防止影响Critic参数
         critic_loss = torch.mean(F.mse_loss(self.critic(states), td_target.detach()))
 
         self.actor_optimizer.zero_grad()

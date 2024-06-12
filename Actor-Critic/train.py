@@ -12,7 +12,7 @@ hidden_dim = 256
 gamma = 0.99
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
-env = gym.make("CartPole-v1")
+env = gym.make("CartPole-v1", render_mode="human")
 torch.manual_seed(0)
 state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.n

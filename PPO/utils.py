@@ -15,6 +15,7 @@ class PolicyNet(nn.Module):
         return self.net(x)
 
 
+# 价值网络 -- 评估当前状态的价值
 class ValueNet(nn.Module):
     def __init__(self, state_dim, hidden_dim):
         super(ValueNet, self).__init__()

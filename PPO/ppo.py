@@ -13,10 +13,10 @@ class PPO:
         self.critic = ValueNet(state_dim, hidden_dim).to(device)
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_learning_rate)
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr=critic_learning_rate)
-        self.gamma = gamma
-        self.lmbda = lmbda
-        self.epochs = epochs
-        self.eps = eps
+        self.gamma = gamma  # 折扣系数
+        self.lmbda = lmbda  # GAE优势函数的缩放因子
+        self.epochs = epochs    # 一条序列的数据用来训练多少轮
+        self.eps = eps  # 截断范围，PPO-clip目标中的截断范围参数，用于限制新旧策略的概率比值，控制策略更新的幅度
 
     def take_action(self, state):
         state = np.array(state, dtype=np.float32)
@@ -33,12 +33,13 @@ class PPO:
         next_states = torch.tensor(transition_dict["next_states"], dtype=torch.float32).to(device)
         dones = torch.tensor(transition_dict["dones"], dtype=torch.float32).view(-1, 1).to(device)
 
-        td_target = rewards + self.gamma * self.critic(next_states) * (1 - dones)
+        td_target = rewards + self.gamma * self.critic(next_states) * (1 - dones)   # 当前时刻的state_value
         td_delta = td_target - self.critic(states)
         td_delta = td_delta.detach().cpu().numpy()
-
+        # 对时序差分结果计算GAE优势函数
         advantage_list = []
         advantage = 0.0
+        # 逆序遍历时序差分结果，把最后一时刻的放前面
         for delta in td_delta[::-1]:
             advantage = self.gamma * self.lmbda * advantage + delta
             advantage_list.append(advantage)
@@ -46,12 +47,14 @@ class PPO:
         advantage = torch.tensor(advantage_list, dtype=torch.float32).to(device)
         old_log_probs = torch.log(self.actor(states).gather(1, actions)).detach()
 
+        # 一个序列训练epochs次，批量更新，在收集一定量的经验后，使用这些经验数据多次更新策略网络和价值网络
         for _ in range(self.epochs):
-            log_probs = torch.log(self.actor(states).gather(1, actions))
-            ratio = torch.exp(log_probs - old_log_probs)
+            log_probs = torch.log(self.actor(states).gather(1, actions))    # 当前策略在t时刻智能体处于状态s所采取的行为概率
+            ratio = torch.exp(log_probs - old_log_probs)    # 计算概率的比值来控制新策略更新幅度
             surr1 = ratio * advantage
             surr2 = torch.clamp(ratio, 1 - self.eps, 1 + self.eps) * advantage
-            actor_loss = torch.mean(-torch.min(surr1, surr2))
+            actor_loss = torch.mean(-torch.min(surr1, surr2))   # 策略网络的损失PPO-clip
+            # 价值网络的当前时刻预测值，与目标价值网络当前时刻的state_value之差
             critic_loss = torch.mean(F.mse_loss(self.critic(states), td_target.detach()))
 
             self.actor_optimizer.zero_grad()
@@ -60,3 +63,4 @@ class PPO:
             critic_loss.backward()
             self.actor_optimizer.step()
             self.critic_optimizer.step()
+
