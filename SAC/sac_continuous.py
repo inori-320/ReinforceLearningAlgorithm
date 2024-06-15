@@ -1,43 +1,46 @@
 import numpy as np
 import torch
 import torch.nn.functional as F
-from utils import PolicyNet, ValueNet
+from utils import PolicyNetContinuous, ValueNetDiscrete
 
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 
-class SAC:
+class SACContinuous:
     def __init__(self, state_dim, hidden_dim, action_dim, action_bound, actor_learning_rate,
                  critic_learning_rate, alpha_learning_rate, target_entropy, tau, gamma):
-        self.actor = PolicyNet(state_dim, hidden_dim, action_dim, action_bound).to(device)
-        self.critic_1 = ValueNet(state_dim, hidden_dim, action_dim).to(device)
-        self.critic_2 = ValueNet(state_dim, hidden_dim, action_dim).to(device)
-        self.target_critic_1 = ValueNet(state_dim, hidden_dim, action_dim).to(device)
-        self.target_critic_2 = ValueNet(state_dim, hidden_dim, action_dim).to(device)
+        self.actor = PolicyNetContinuous(state_dim, hidden_dim, action_dim, action_bound).to(device)
+        self.critic_1 = ValueNetDiscrete(state_dim, hidden_dim, action_dim).to(device)
+        self.critic_2 = ValueNetDiscrete(state_dim, hidden_dim, action_dim).to(device)
+        self.target_critic_1 = ValueNetDiscrete(state_dim, hidden_dim, action_dim).to(device)
+        self.target_critic_2 = ValueNetDiscrete(state_dim, hidden_dim, action_dim).to(device)
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr=actor_learning_rate)
         self.critic_optimizer_1 = torch.optim.Adam(self.critic_1.parameters(), lr=critic_learning_rate)
         self.critic_optimizer_2 = torch.optim.Adam(self.critic_2.parameters(), lr=critic_learning_rate)
+        # 令目标Q网络的初始参数和Q网络一样
         self.target_critic_1.load_state_dict(self.critic_1.state_dict())
         self.target_critic_2.load_state_dict(self.critic_2.state_dict())
-        self.log_alpha = torch.tensor(np.log(0.01), dtype=torch.float32)
-        self.log_alpha.requires_grad = True
-        self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=alpha_learning_rate)
-        self.gamma = gamma  # 折扣系数
-        self.target_entropy = target_entropy
-        self.tau = tau
+        self.log_alpha = torch.tensor(np.log(0.01), dtype=torch.float32)    # 可学习的熵系数，用alpha的log值,可以使训练结果比较稳定
+        self.log_alpha.requires_grad = True     # 可以对alpha求梯度
+        self.log_alpha_optimizer = torch.optim.Adam([self.log_alpha], lr=alpha_learning_rate)       # 熵系数的优化器
+        self.gamma = gamma  # 折扣因子
+        self.target_entropy = target_entropy    # 目标熵值
+        self.tau = tau  # 软更新参数
 
     def take_action(self, state):
         state = np.array(state, dtype=np.float32)
         state = torch.tensor(state).unsqueeze(0).to(device)  # 将状态转换为张量并添加批次维度
-        action = self.actor(state)[0]
+        action = self.actor(state)[0]   # 使用策略网络生成动作，并返回该动作
         return [action.item()]
 
+    # 计算目标 Q 值
     def calc_target(self, rewards, next_states, dones):
         next_actions, log_prob = self.actor(next_states)
-        entropy = -log_prob
+        entropy = -log_prob  # 计算动作的熵，负的对数概率。这代表了策略的随机性，熵越高，策略越随机
         q1_value = self.target_critic_1(next_states, next_actions)
         q2_value = self.target_critic_2(next_states, next_actions)
-        next_value = torch.min(q1_value, q2_value) + self.log_alpha.exp() * entropy
+        # 计算价值的时候加上熵，鼓励策略的随机性
+        next_value = torch.min(q1_value, q2_value) + self.log_alpha.exp() * entropy  # .exp是熵的权重，控制熵项对目标函数的影响程度
         td_target = rewards + self.gamma * next_value * (1 - dones)
         return td_target
 
@@ -67,11 +70,12 @@ class SAC:
         entropy = -log_prob
         q1_value = self.critic_1(states, new_actions)
         q2_value = self.critic_2(states, new_actions)
+        # 策略网络的损失是Q值和熵项的加权和的负值的平均值。目的是最大化 Q 值和熵
         actor_loss = torch.mean(-self.log_alpha.exp() * entropy - torch.min(q1_value, q2_value))
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
-
+        # 将策略的熵调整到目标熵值
         alpha_loss = torch.mean((entropy - self.target_entropy).detach() * self.log_alpha.exp())
         self.log_alpha_optimizer.zero_grad()
         alpha_loss.backward()

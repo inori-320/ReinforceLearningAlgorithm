@@ -23,9 +23,9 @@ class ReplayBuffer:
         return len(self.buffer)
 
 
-class PolicyNet(nn.Module):
+class PolicyNetContinuous(nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim, action_bound):
-        super(PolicyNet, self).__init__()
+        super(PolicyNetContinuous, self).__init__()
         self.fc1 = nn.Linear(state_dim, hidden_dim)
         self.fc_mu = nn.Linear(hidden_dim, action_dim)
         self.fc_std = nn.Linear(hidden_dim, action_dim)
@@ -39,14 +39,15 @@ class PolicyNet(nn.Module):
         normal_sample = dist.rsample()  # rsample是重参数化采样，确保采样是可微分的
         log_prob = dist.log_prob(normal_sample)
         action = torch.tanh(normal_sample)
+        # 调整对数概率log_prob以考虑tanh变换的影响，1e-7是为了数值稳定性，防止对数为零
         log_prob = log_prob - torch.log(1 - torch.tanh(action).pow(2) + 1e-7)
         action = action * self.action_bound
         return action, log_prob
 
 
-class ValueNet(nn.Module):
+class ValueNetContinuous(nn.Module):
     def __init__(self, state_dim, hidden_dim, action_dim):
-        super(ValueNet, self).__init__()
+        super(ValueNetContinuous, self).__init__()
         self.net = nn.Sequential(
             nn.Linear(state_dim + action_dim, hidden_dim),
             nn.ReLU(),
@@ -58,3 +59,31 @@ class ValueNet(nn.Module):
     def forward(self, x, a):
         cat = torch.concat([x, a], dim=1)
         return self.net(cat)
+
+
+class PolicyNetDiscrete(nn.Module):
+    def __init__(self, state_dim, hidden_dim, action_dim):
+        super(PolicyNetDiscrete, self).__init__()
+        self.net = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, action_dim),
+            nn.Softmax(dim=1)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class ValueNetDiscrete(nn.Module):
+    def __init__(self, state_dim, hidden_dim, action_dim):
+        super(ValueNetDiscrete, self).__init__()
+        self.net = nn.Sequential(
+            nn.Linear(state_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, action_dim)
+        )
+
+    def forward(self, x):
+        return self.net(x)
+
