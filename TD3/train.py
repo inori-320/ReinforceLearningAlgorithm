@@ -30,7 +30,8 @@ state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.shape[0]
 action_bound = env.action_space.high[0]
 
-agent = TD3(state_dim, hidden_dim, action_dim, action_bound, sigma, actor_learning_rate, critic_learning_rate, tau, gamma, policy_delay, noise_clip, policy_noise)
+agent = TD3(state_dim, hidden_dim, action_dim, action_bound, sigma,
+            actor_learning_rate, critic_learning_rate, tau, gamma, policy_delay, noise_clip, policy_noise)
 
 reward_buffer = []  # 记录积累奖励
 reward_mean_buffer = []

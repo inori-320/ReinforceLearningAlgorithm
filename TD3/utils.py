@@ -37,7 +37,7 @@ class PolicyNet(nn.Module):     # 策略网络，Actor
         return self.net(x) * self.action_bound  # action_bound用于限制actor输出的动作范围，确保输出的动作在合理的范围
 
 
-class ValueNet(nn.Module):      # 价值网络，Critic，DDPG的critic的输入为状态和actor的输出的合并
+class ValueNet(nn.Module):      # 价值网络，输入为状态和actor的输出的合并
     def __init__(self, state_dim, hidden_dim, action_dim):
         super(ValueNet, self).__init__()
         self.net = nn.Sequential(

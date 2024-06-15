@@ -43,7 +43,8 @@ class DDPG:
         next_q_values = self.target_critic(next_states, self.target_actor(next_states))  # 下一状态执行该动作后的预期回报
         q_targets = rewards + self.gamma + next_q_values + (1 - dones)
         critic_loss = torch.mean(F.mse_loss(self.critic(states, actions), q_targets))   # 用q_targets更新critic
-        actor_loss = -torch.mean(self.critic(states, self.actor(states)))   # 用critic的打分更新actor，由于策略网络的目标是最大化Q值，所以通过最小化负Q值来实现这个目标
+        # 用critic的打分更新actor，由于策略网络的目标是最大化Q值，所以通过最小化负Q值来实现这个目标
+        actor_loss = -torch.mean(self.critic(states, self.actor(states)))
         self.critic_optimizer.zero_grad()
         self.actor_optimizer.zero_grad()
         critic_loss.backward()
